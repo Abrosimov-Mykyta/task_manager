@@ -1,0 +1,76 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  groups       TaskGroup[]
+  tasks        Task[]
+  entries      CalendarEntry[]
+}
+
+model TaskGroup {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  color     String?  // optional accent color for group
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tasks     Task[]
+  entries   CalendarEntry[]
+
+  @@unique([userId, name])
+  @@index([userId])
+}
+
+model Task {
+  id          String    @id @default(cuid())
+  userId      String
+  title       String
+  minutes     Int       @default(30)
+  color       String?   // optional accent color for task
+  groupId     String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group       TaskGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([groupId])
+}
+
+model CalendarEntry {
+  id        String   @id @default(cuid())
+  userId    String
+  date      String   // YYYY-MM-DD
+  dayIndex  Int      // 0..6 (Mon..Sun) for week view
+  startMin  Int      // minutes from 00:00, snapped to step
+  minutes   Int      @default(30)
+  title     String
+  color     String?
+  groupId   String?
+  done      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group     TaskGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([groupId])
+  @@index([userId, date])
+}
+
