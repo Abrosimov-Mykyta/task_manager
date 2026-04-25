@@ -265,6 +265,23 @@ export default function StatsPage() {
     return { linePath, areaPath };
   }, [lineData, maxLine]);
 
+  const visibleLineTickIndexes = useMemo(() => {
+    const count = lineData.length;
+    if (count <= 1) return new Set([0]);
+
+    // Keep week unchanged (already readable with 7 labels).
+    if (rangeType === "week") {
+      return new Set(Array.from({ length: count }, (_, i) => i));
+    }
+
+    // Day/month: show only ~6 ticks to avoid label overlap on mobile.
+    const targetTicks = 6;
+    const step = Math.max(1, Math.ceil((count - 1) / (targetTicks - 1)));
+    const out = new Set([0, count - 1]);
+    for (let i = step; i < count - 1; i += step) out.add(i);
+    return out;
+  }, [lineData.length, rangeType]);
+
   return (
     <div className="app">
       <header className="app-header">
@@ -388,7 +405,7 @@ export default function StatsPage() {
                   </div>
                   <div className="stats-line-x">
                     {lineData.map((d, i) => (
-                      <div key={d.label || i}>{d.label}</div>
+                      <div key={d.label || i}>{visibleLineTickIndexes.has(i) ? d.label : ""}</div>
                     ))}
                   </div>
                 </div>

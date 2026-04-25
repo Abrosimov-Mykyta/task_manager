@@ -24,6 +24,9 @@ const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 /** Equal width for each day column (horizontal month strip) */
 const CAL_DAY_COL_PX = 280;
+const MOBILE_CAL_DAY_COL_PX = 190;
+const CAL_TIME_COL_PX = 144;
+const MOBILE_CAL_TIME_COL_PX = 88;
 
 export default function CalendarPage() {
   const { user, signOut } = useAuth();
@@ -42,8 +45,16 @@ export default function CalendarPage() {
   const [createEntry, setCreateEntry] = useState(null); // { date, startMin } YYYY-MM-DD
   const [editEntry, setEditEntry] = useState(null);
   const [dragOverCell, setDragOverCell] = useState(null); // { date, startMin } | null
+  const [mobileQuickTaskId, setMobileQuickTaskId] = useState(null);
+  const [isMobileViewport, setIsMobileViewport] = useState(
+    () => typeof window !== "undefined" && window.matchMedia("(max-width: 640px)").matches
+  );
   const isDraggingEntryRef = useRef(false);
   const { calendarSettings, timeFormat } = useSettings();
+  const isTouchLikeDevice =
+    typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)")?.matches;
+  const dayColPx = isMobileViewport ? MOBILE_CAL_DAY_COL_PX : CAL_DAY_COL_PX;
+  const timeColPx = isMobileViewport ? MOBILE_CAL_TIME_COL_PX : CAL_TIME_COL_PX;
 
   const groupById = useMemo(() => {
     const m = new Map();
@@ -75,8 +86,12 @@ export default function CalendarPage() {
   );
 
   const calendarGridColumns = useMemo(
-    () => `144px repeat(${monthDays.length}, ${CAL_DAY_COL_PX}px)`,
-    [monthDays.length]
+    () => `${timeColPx}px repeat(${monthDays.length}, ${dayColPx}px)`,
+    [monthDays.length, timeColPx, dayColPx]
+  );
+  const mobileQuickTask = useMemo(
+    () => tasks.find((t) => String(t.id) === String(mobileQuickTaskId)) ?? null,
+    [tasks, mobileQuickTaskId]
   );
 
   useEffect(() => {
@@ -88,17 +103,23 @@ export default function CalendarPage() {
     const todayIndex = monthDays.indexOf(todayYmd);
     if (todayIndex < 0) return;
 
-    const timeColWidth = 144;
     const targetLeft =
-      timeColWidth +
-      todayIndex * CAL_DAY_COL_PX -
-      (scroller.clientWidth / 2 - CAL_DAY_COL_PX / 2);
+      timeColPx + todayIndex * dayColPx - (scroller.clientWidth / 2 - dayColPx / 2);
     const maxLeft = Math.max(0, scroller.scrollWidth - scroller.clientWidth);
     const clampedLeft = Math.min(Math.max(0, targetLeft), maxLeft);
 
     scroller.scrollLeft = clampedLeft;
     didInitialTodayScrollRef.current = true;
-  }, [monthDays]);
+  }, [monthDays, timeColPx, dayColPx]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return;
+    const mql = window.matchMedia("(max-width: 640px)");
+    const onChange = (e) => setIsMobileViewport(e.matches);
+    setIsMobileViewport(mql.matches);
+    mql.addEventListener?.("change", onChange);
+    return () => mql.removeEventListener?.("change", onChange);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -395,6 +416,10 @@ export default function CalendarPage() {
     setTimeout(() => { isDraggingEntryRef.current = false; }, 0);
   }
 
+  function pickTaskForTouchSchedule(taskId) {
+    setMobileQuickTaskId((prev) => (String(prev) === String(taskId) ? null : taskId));
+  }
+
   return (
     <div className="app">
       <header className="app-header">
@@ -477,11 +502,16 @@ export default function CalendarPage() {
                 return (
                   <div
                     key={t.id}
-                    className="task-item"
+                    className={`task-item${isTouchLikeDevice ? " task-item-touch" : ""}${
+                      String(mobileQuickTaskId) === String(t.id) ? " task-item-selected" : ""
+                    }`}
                     style={{ borderLeftColor: accent }}
-                    draggable
+                    draggable={!isTouchLikeDevice}
                     onDragStart={(e) => handleTaskDragStart(e, t)}
                     onDragEnd={handleTaskDragEnd}
+                    onClick={() => {
+                      if (isTouchLikeDevice) pickTaskForTouchSchedule(t.id);
+                    }}
                   >
                     <div className="task-main">
                       <div className="task-title">{t.title}</div>
@@ -506,6 +536,28 @@ export default function CalendarPage() {
         </aside>
 
         <main className="calendar">
+          {isTouchLikeDevice ? (
+            <div className="mobile-quickbar">
+              <div className="mobile-quickbar-title">Quick schedule</div>
+              {mobileQuickTask ? (
+                <div className="mobile-quickbar-row">
+                  <span className="mobile-quickbar-pill">
+                    Selected: <strong>{mobileQuickTask.title}</strong>
+                  </span>
+                  <button
+                    type="button"
+                    className="icon-btn"
+                    onClick={() => setMobileQuickTaskId(null)}
+                    title="Clear selected task"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ) : (
+                <div className="mobile-quickbar-hint">Tap a task, then tap a calendar slot.</div>
+              )}
+            </div>
+          ) : null}
           <div className="calendar-month-toolbar">
             <button
               type="button"
@@ -530,7 +582,7 @@ export default function CalendarPage() {
             <div
               className="calendar-month-strip"
               style={{
-                minWidth: `calc(144px + ${monthDays.length} * ${CAL_DAY_COL_PX}px)`,
+                minWidth: `calc(${timeColPx}px + ${monthDays.length} * ${dayColPx}px)`,
               }}
             >
               <div className="calendar-header" style={{ gridTemplateColumns: calendarGridColumns }}>
@@ -569,6 +621,14 @@ export default function CalendarPage() {
                           data-cell-start={minutes}
                           onClick={() => {
                             if (covered) return;
+                            if (isTouchLikeDevice && mobileQuickTask) {
+                              createCalendarEntryFromTask(mobileQuickTask, minutes, dayDate)
+                                .then(() => setMobileQuickTaskId(null))
+                                .catch((err) => {
+                                  window.alert(err?.message || "Could not schedule task in this slot.");
+                                });
+                              return;
+                            }
                             openCreateEntry(minutes, dayDate);
                           }}
                           onDragOver={(e) => handleCellDragOver(e, minutes, dayDate)}
