@@ -1,10 +1,11 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import "../App.css";
 import { useAuth } from "../auth/AuthProvider";
 import { useNavigate } from "react-router-dom";
 import CustomSelect from "../components/CustomSelect";
 import { useSettings } from "../settings/SettingsProvider";
 import { formatClock } from "../lib/formatting";
+import { apiFetch } from "../lib/api";
 
 function buildTimeOptions(stepMinutes, type, timeFormat) {
   const options = [];
@@ -26,6 +27,8 @@ function snapToStep(minutes, stepMinutes) {
 export default function SettingsPage() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
   const { theme, timeFormat, calendarSettings, setTheme, setTimeFormat, setCalendarSettings } =
     useSettings();
 
@@ -37,6 +40,25 @@ export default function SettingsPage() {
     () => buildTimeOptions(calendarSettings.stepMinutes, "end", timeFormat),
     [calendarSettings.stepMinutes, timeFormat]
   );
+
+  async function deleteAccount() {
+    const confirmed = window.confirm(
+      "Delete your account permanently? This will remove all tasks, groups, and calendar entries."
+    );
+    if (!confirmed) return;
+
+    setDeleteError("");
+    setDeleteBusy(true);
+    try {
+      await apiFetch("/auth/me", { auth: true, method: "DELETE" });
+      signOut();
+      navigate("/register");
+    } catch (err) {
+      setDeleteError(err?.message || "Failed to delete account");
+    } finally {
+      setDeleteBusy(false);
+    }
+  }
 
   return (
     <div className="app">
@@ -161,6 +183,22 @@ export default function SettingsPage() {
                 />
               </label>
             </div>
+          </section>
+
+          <section className="settings-card">
+            <h2 className="settings-card-title">Danger zone</h2>
+            <p className="settings-subtitle" style={{ margin: "0 0 12px" }}>
+              Permanently remove your account and all associated data.
+            </p>
+            <button
+              className="danger-btn"
+              type="button"
+              onClick={deleteAccount}
+              disabled={deleteBusy}
+            >
+              {deleteBusy ? "Deleting..." : "Delete account"}
+            </button>
+            {deleteError ? <div className="modal-error" style={{ marginTop: 10 }}>{deleteError}</div> : null}
           </section>
         </div>
       </main>

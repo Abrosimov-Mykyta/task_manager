@@ -102,6 +102,21 @@ app.get(
   })
 );
 
+app.delete(
+  "/auth/me",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const existing = await prisma.user.findUnique({
+      where: { id: req.userId },
+      select: { id: true },
+    });
+    if (!existing) return res.status(404).json({ error: "User not found" });
+
+    await prisma.user.delete({ where: { id: req.userId } });
+    res.status(204).end();
+  })
+);
+
 const groupCreateSchema = z.object({
   name: z.string().min(1).max(64),
   color: z.string().min(1).max(32).optional(),
