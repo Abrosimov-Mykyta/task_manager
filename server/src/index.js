@@ -5,6 +5,7 @@ import bcrypt from "bcrypt";
 import { z } from "zod";
 import { prisma } from "./prisma.js";
 import { authMiddleware, signToken } from "./auth.js";
+import { seedDefaultWorkspaceIfEmpty } from "./defaultWorkspace.js";
 
 const app = express();
 
@@ -62,6 +63,7 @@ app.post(
 
   const passwordHash = await bcrypt.hash(password, 12);
   const user = await prisma.user.create({ data: { email, passwordHash } });
+  await seedDefaultWorkspaceIfEmpty(prisma, user.id);
   const token = signToken(user.id, JWT_SECRET);
 
   return res.json({ token, user: { id: user.id, email: user.email } });
@@ -95,6 +97,7 @@ app.get(
       select: { id: true, email: true },
     });
     if (!user) return res.status(401).json({ error: "Unauthorized" });
+    await seedDefaultWorkspaceIfEmpty(prisma, user.id);
     return res.json({ user });
   })
 );
