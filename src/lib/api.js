@@ -20,13 +20,21 @@ export async function apiFetch(path, { auth = false, ...init } = {}) {
 
   const res = await fetch(`${API_URL}${path}`, { ...init, headers });
   const text = await res.text();
-  const data = text ? JSON.parse(text) : null;
+  let data = null;
+  if (text) {
+    try {
+      data = JSON.parse(text);
+    } catch {
+      data = null;
+    }
+  }
 
   if (!res.ok) {
-    const message = data?.error || data?.message || `Request failed (${res.status})`;
+    const fallbackMessage = text && !data ? text.slice(0, 180) : `Request failed (${res.status})`;
+    const message = data?.error || data?.message || fallbackMessage;
     const err = new Error(message);
     err.status = res.status;
-    err.data = data;
+    err.data = data ?? text ?? null;
     throw err;
   }
 
