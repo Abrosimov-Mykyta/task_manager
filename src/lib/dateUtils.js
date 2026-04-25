@@ -38,32 +38,19 @@ export function formatDayShort(dateStr) {
   return `${day}.${String(month).padStart(2, "0")}`;
 }
 
-const MONTHS_UA = [
-  "Січень", "Лютий", "Березень", "Квітень", "Травень", "Червень",
-  "Липень", "Серпень", "Вересень", "Жовтень", "Листопад", "Грудень",
-];
-const MONTHS_EN = [
+const MONTHS = [
   "January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December",
 ];
 
-function getUiLanguage() {
-  try {
-    const attr = document?.documentElement?.getAttribute("data-language");
-    if (attr === "en") return "en";
-  } catch {}
-  return "uk";
-}
-
 export function getMonthName(dateStr) {
   const d = typeof dateStr === "string" ? parseYMD(dateStr) : dateStr;
-  return (getUiLanguage() === "en" ? MONTHS_EN : MONTHS_UA)[d.getMonth()];
+  return MONTHS[d.getMonth()];
 }
 
 export function getMonthYear(dateStr) {
   const d = typeof dateStr === "string" ? parseYMD(dateStr) : dateStr;
-  const month = (getUiLanguage() === "en" ? MONTHS_EN : MONTHS_UA)[d.getMonth()];
-  return `${month} ${d.getFullYear()}`;
+  return `${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
 }
 
 /** First day of month (YYYY-MM-DD) */
@@ -86,4 +73,47 @@ export function getDaysInMonth(dateStr) {
   const start = parseYMD(getMonthStart(dateStr));
   const end = parseYMD(getMonthEnd(dateStr));
   return (end - start) / 86400000 + 1;
+}
+
+/** Every calendar date (YYYY-MM-DD) in the month containing `monthYmd`, left-to-right order */
+export function getDatesInMonth(monthYmd) {
+  const start = getMonthStart(monthYmd);
+  const end = getMonthEnd(monthYmd);
+  const out = [];
+  let d = start;
+  while (d <= end) {
+    out.push(d);
+    d = addDays(d, 1);
+  }
+  return out;
+}
+
+/** 0 = Monday … 6 = Sunday, for API `dayIndex` */
+export function dayIndexFromDate(dayDate) {
+  const mon = getMonday(dayDate);
+  const a = parseYMD(mon).getTime();
+  const b = parseYMD(dayDate).getTime();
+  return Math.round((b - a) / 86400000);
+}
+
+/** Monday dates (YYYY-MM-DD) for each week that overlaps the month containing `monthYmd` */
+export function getMonthWeekStarts(monthYmd) {
+  const monthStart = getMonthStart(monthYmd);
+  const monthEnd = getMonthEnd(monthYmd);
+  const firstWeekMonday = getMonday(monthStart);
+  const lastWeekMonday = getMonday(monthEnd);
+  const out = [];
+  let ws = firstWeekMonday;
+  while (ws <= lastWeekMonday) {
+    out.push(ws);
+    ws = addDays(ws, 7);
+  }
+  return out;
+}
+
+/** First day of month, shifted by `delta` months (delta may be negative) */
+export function shiftMonthStart(monthYmd, deltaMonths) {
+  const d = parseYMD(getMonthStart(monthYmd));
+  d.setMonth(d.getMonth() + deltaMonths);
+  return getMonthStart(toYMD(d));
 }
