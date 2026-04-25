@@ -7,29 +7,43 @@ import GroupModal from "../components/GroupModal";
 import EntryModal from "../components/EntryModal";
 import CustomSelect from "../components/CustomSelect";
 import { useNavigate } from "react-router-dom";
-import { getMonday, addDays, toYMD, formatDayShort } from "../lib/dateUtils";
+import {
+  toYMD,
+  formatDayShort,
+  getMonthStart,
+  getMonthEnd,
+  getMonthYear,
+  getDatesInMonth,
+  dayIndexFromDate,
+  shiftMonthStart,
+} from "../lib/dateUtils";
 import { useSettings } from "../settings/SettingsProvider";
 import { formatClock } from "../lib/formatting";
 
-const DAYS = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Нд"];
+const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+/** Equal width for each day column (horizontal month strip) */
+const CAL_DAY_COL_PX = 280;
 
 export default function CalendarPage() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+  const monthScrollRef = useRef(null);
+  const didInitialTodayScrollRef = useRef(false);
   const [tasks, setTasks] = useState([]);
   const [groups, setGroups] = useState([]);
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [weekStart, setWeekStart] = useState(() => getMonday(toYMD(new Date())));
+  const [monthAnchor, setMonthAnchor] = useState(() => getMonthStart(toYMD(new Date())));
 
   const [createOpen, setCreateOpen] = useState(false);
   const [editTask, setEditTask] = useState(null);
   const [createGroupOpen, setCreateGroupOpen] = useState(false);
-  const [createEntry, setCreateEntry] = useState(null); // { dayIndex, startMin }
+  const [createEntry, setCreateEntry] = useState(null); // { date, startMin } YYYY-MM-DD
   const [editEntry, setEditEntry] = useState(null);
-  const [dragOverCell, setDragOverCell] = useState(null); // { dayIndex, startMin } | null
+  const [dragOverCell, setDragOverCell] = useState(null); // { date, startMin } | null
   const isDraggingEntryRef = useRef(false);
-  const { calendarSettings, timeFormat, language } = useSettings();
+  const { calendarSettings, timeFormat } = useSettings();
 
   const groupById = useMemo(() => {
     const m = new Map();
@@ -50,7 +64,41 @@ export default function CalendarPage() {
     return formatClock(totalMinutes, timeFormat);
   }
 
-  const weekEnd = useMemo(() => addDays(weekStart, 6), [weekStart]);
+  const monthDays = useMemo(() => getDatesInMonth(monthAnchor), [monthAnchor]);
+
+  const monthStartYmd = useMemo(() => getMonthStart(monthAnchor), [monthAnchor]);
+  const monthEndYmd = useMemo(() => getMonthEnd(monthAnchor), [monthAnchor]);
+
+  const entriesRange = useMemo(
+    () => ({ from: monthStartYmd, to: monthEndYmd }),
+    [monthStartYmd, monthEndYmd]
+  );
+
+  const calendarGridColumns = useMemo(
+    () => `144px repeat(${monthDays.length}, ${CAL_DAY_COL_PX}px)`,
+    [monthDays.length]
+  );
+
+  useEffect(() => {
+    if (didInitialTodayScrollRef.current) return;
+    const scroller = monthScrollRef.current;
+    if (!scroller || monthDays.length === 0) return;
+
+    const todayYmd = toYMD(new Date());
+    const todayIndex = monthDays.indexOf(todayYmd);
+    if (todayIndex < 0) return;
+
+    const timeColWidth = 144;
+    const targetLeft =
+      timeColWidth +
+      todayIndex * CAL_DAY_COL_PX -
+      (scroller.clientWidth / 2 - CAL_DAY_COL_PX / 2);
+    const maxLeft = Math.max(0, scroller.scrollWidth - scroller.clientWidth);
+    const clampedLeft = Math.min(Math.max(0, targetLeft), maxLeft);
+
+    scroller.scrollLeft = clampedLeft;
+    didInitialTodayScrollRef.current = true;
+  }, [monthDays]);
 
   useEffect(() => {
     let cancelled = false;
@@ -64,7 +112,8 @@ export default function CalendarPage() {
         if (cancelled) return;
         setTasks(t.tasks ?? []);
         setGroups(g.groups ?? []);
-        const e = await apiFetch(`/entries?from=${weekStart}&to=${weekEnd}`, { auth: true });
+        const { from, to } = entriesRange;
+        const e = await apiFetch(`/entries?from=${from}&to=${to}`, { auth: true });
         if (cancelled) return;
         setEntries(e.entries ?? []);
       } catch {
@@ -80,7 +129,7 @@ export default function CalendarPage() {
     return () => {
       cancelled = true;
     };
-  }, [weekStart, weekEnd]);
+  }, [entriesRange.from, entriesRange.to]);
 
   async function createGroup(payload) {
     const data = await apiFetch("/groups", {
@@ -116,17 +165,17 @@ export default function CalendarPage() {
 
   async function createCalendarEntry(payload) {
     if (!createEntry) return;
-    const date = addDays(weekStart, createEntry.dayIndex);
-    if (hasEntryOverlap(date, createEntry.startMin, payload.minutes)) {
-      throw new Error("Цей час зайнятий іншою задачею.");
+    const { date, startMin } = createEntry;
+    if (hasEntryOverlap(date, startMin, payload.minutes)) {
+      throw new Error("This time slot overlaps another entry.");
     }
     const data = await apiFetch("/entries", {
       auth: true,
       method: "POST",
       body: JSON.stringify({
         date,
-        dayIndex: createEntry.dayIndex,
-        startMin: createEntry.startMin,
+        dayIndex: dayIndexFromDate(date),
+        startMin,
         ...payload,
       }),
     });
@@ -144,7 +193,7 @@ export default function CalendarPage() {
         payload.startMin !== undefined ||
         payload.minutes !== undefined;
       if (timingChanged && hasEntryOverlap(nextDate, nextStartMin, nextMinutes, entryId)) {
-        throw new Error("Цей час зайнятий іншою задачею.");
+        throw new Error("This time slot overlaps another entry.");
       }
     }
     const data = await apiFetch(`/entries/${entryId}`, {
@@ -166,9 +215,9 @@ export default function CalendarPage() {
   }
 
   function getRowBaseHeight() {
-    if (calendarSettings.stepMinutes === 15) return 32;
-    if (calendarSettings.stepMinutes === 30) return 44;
-    return 56;
+    if (calendarSettings.stepMinutes === 15) return 64;
+    if (calendarSettings.stepMinutes === 30) return 88;
+    return 112;
   }
 
   function getChipHeight(minutes) {
@@ -219,18 +268,16 @@ export default function CalendarPage() {
     );
   }
 
-  function openCreateEntry(dayIndex, startMin) {
+  function openCreateEntry(startMin, dayDate) {
     const snapped = snapToStep(startMin);
-    const date = addDays(weekStart, dayIndex);
-    if (isCellCovered(date, snapped)) return;
-    setCreateEntry({ dayIndex, startMin: snapped });
+    if (isCellCovered(dayDate, snapped)) return;
+    setCreateEntry({ date: dayDate, startMin: snapped });
   }
 
-  async function createCalendarEntryFromTask(task, dayIndex, startMin) {
-    const date = addDays(weekStart, dayIndex);
+  async function createCalendarEntryFromTask(task, startMin, dayDate) {
     const snapped = snapToStep(startMin);
-    if (hasEntryOverlap(date, snapped, task.minutes)) {
-      throw new Error("Цей час зайнятий іншою задачею.");
+    if (hasEntryOverlap(dayDate, snapped, task.minutes)) {
+      throw new Error("This time slot overlaps another entry.");
     }
     const g = task.groupId ? groupById.get(task.groupId) : null;
     const color = task.color || g?.color || "#6366f1";
@@ -238,8 +285,8 @@ export default function CalendarPage() {
       auth: true,
       method: "POST",
       body: JSON.stringify({
-        date,
-        dayIndex,
+        date: dayDate,
+        dayIndex: dayIndexFromDate(dayDate),
         startMin: snapped,
         title: task.title,
         minutes: task.minutes,
@@ -250,33 +297,34 @@ export default function CalendarPage() {
     setEntries((prev) => [...prev, data.entry]);
   }
 
-  function handleCellDragOver(e, dayIndex, startMin) {
+  function handleCellDragOver(e, startMin, dayDate) {
     e.preventDefault();
     e.dataTransfer.dropEffect = "copy";
     e.stopPropagation();
-    setDragOverCell({ dayIndex, startMin });
+    setDragOverCell({ date: dayDate, startMin });
   }
 
   function handleCellDragLeave() {
     setDragOverCell(null);
   }
 
-  function processDrop(e, dayIndex, startMin) {
+  function processDrop(e, startMin, dayDate) {
     const snapped = snapToStep(startMin);
+    const di = dayIndexFromDate(dayDate);
     const text = e.dataTransfer.getData("text/plain");
     if (text) {
       try {
         const data = JSON.parse(text);
         if (data.type === "task" && data.task) {
-          createCalendarEntryFromTask(data.task, dayIndex, startMin).catch((err) =>
+          createCalendarEntryFromTask(data.task, startMin, dayDate).catch((err) =>
             console.error("Create entry from task failed", err)
           );
           return;
         }
         if (data.type === "entry" && data.entryId != null) {
           updateCalendarEntry(String(data.entryId), {
-            date: addDays(weekStart, dayIndex),
-            dayIndex,
+            date: dayDate,
+            dayIndex: di,
             startMin: snapped,
           });
           return;
@@ -289,7 +337,7 @@ export default function CalendarPage() {
     if (type === "task") {
       try {
         const task = JSON.parse(payload);
-        createCalendarEntryFromTask(task, dayIndex, startMin).catch((err) =>
+        createCalendarEntryFromTask(task, startMin, dayDate).catch((err) =>
           console.error("Create entry from task failed", err)
         );
       } catch (_) {}
@@ -297,18 +345,18 @@ export default function CalendarPage() {
     }
     if (type === "entry") {
       updateCalendarEntry(payload, {
-        date: addDays(weekStart, dayIndex),
-        dayIndex,
+        date: dayDate,
+        dayIndex: di,
         startMin: snapped,
       });
     }
   }
 
-  function handleCellDrop(e, dayIndex, startMin) {
+  function handleCellDrop(e, startMin, dayDate) {
     e.preventDefault();
     e.stopPropagation();
     setDragOverCell(null);
-    processDrop(e, dayIndex, startMin);
+    processDrop(e, startMin, dayDate);
   }
 
   function handleTaskDragStart(e, task) {
@@ -352,25 +400,25 @@ export default function CalendarPage() {
       <header className="app-header">
         <div className="app-logo">FocusOS</div>
         <div className="app-right">
-          <div style={{ fontSize: 12, color: "rgba(229,231,235,0.7)" }}>
+          <div className="app-user-email">
             {user?.email}
           </div>
           <CustomSelect
             className="app-select"
-            value="Календар"
+            value="Calendar"
             onChange={(v) => {
-              if (v === "Статистика") navigate("/stats");
-              if (v === "Досягнення") navigate("/achievements");
-              if (v === "Налаштування") navigate("/settings");
+              if (v === "Statistics") navigate("/stats");
+              if (v === "Achievements") navigate("/achievements");
+              if (v === "Settings") navigate("/settings");
             }}
             options={[
-              { value: "Календар", label: "Календар" },
-              { value: "Статистика", label: "Статистика" },
-              { value: "Досягнення", label: "Досягнення" },
-              { value: "Налаштування", label: "Налаштування" },
+              { value: "Calendar", label: "Calendar" },
+              { value: "Statistics", label: "Statistics" },
+              { value: "Achievements", label: "Achievements" },
+              { value: "Settings", label: "Settings" },
             ]}
           />
-          <button className="icon-btn" type="button" onClick={() => signOut()} title="Вийти">
+          <button className="icon-btn" type="button" onClick={() => signOut()} title="Sign out">
             ↩
           </button>
         </div>
@@ -381,13 +429,13 @@ export default function CalendarPage() {
           <div className="sidebar-section">
             <div className="sidebar-section-header">
               <h2 className="sidebar-title" style={{ margin: 0 }}>
-                Групи
+                Groups
               </h2>
               <button
                 className="icon-btn"
                 type="button"
                 onClick={() => setCreateGroupOpen(true)}
-                title="Додати групу"
+                title="Add group"
                 aria-label="Add group"
               >
                 +
@@ -396,9 +444,9 @@ export default function CalendarPage() {
 
             <div className="group-list">
               {loading ? (
-                <div className="task-empty">Завантаження...</div>
+                <div className="task-empty">Loading…</div>
               ) : groups.length === 0 ? (
-                <div className="task-empty">Поки немає груп. Додай першу.</div>
+                <div className="task-empty">No groups yet. Add your first one.</div>
               ) : (
                 groups.map((g) => (
                   <div key={g.id} className="group-pill" style={{ borderLeftColor: g.color || "#22c55e" }}>
@@ -412,16 +460,16 @@ export default function CalendarPage() {
 
           <div className="sidebar-divider" />
 
-          <h2 className="sidebar-title">Мої задачі</h2>
+          <h2 className="sidebar-title">My tasks</h2>
           <button className="sidebar-add" type="button" onClick={() => setCreateOpen(true)}>
-            + Додати задачу
+            + Add task
           </button>
 
           <div className="task-list">
             {loading ? (
-              <div className="task-empty">Завантаження...</div>
+              <div className="task-empty">Loading…</div>
             ) : tasks.length === 0 ? (
-              <div className="task-empty">Поки немає задач. Створи першу.</div>
+              <div className="task-empty">No tasks yet. Create your first one.</div>
             ) : (
               tasks.map((t) => {
                 const g = t.groupId ? groupById.get(t.groupId) : null;
@@ -438,7 +486,7 @@ export default function CalendarPage() {
                     <div className="task-main">
                       <div className="task-title">{t.title}</div>
                       <div className="task-meta">
-                        {t.minutes} хв{g ? ` • ${g.name}` : ""}
+                        {t.minutes} min{g ? ` • ${g.name}` : ""}
                       </div>
                     </div>
                     <button
@@ -446,7 +494,7 @@ export default function CalendarPage() {
                       type="button"
                       onClick={() => setEditTask(t)}
                       aria-label="Task settings"
-                      title="Налаштування"
+                      title="Task settings"
                     >
                       ⚙
                     </button>
@@ -458,141 +506,152 @@ export default function CalendarPage() {
         </aside>
 
         <main className="calendar">
-          <div className="calendar-header">
-            <div className="calendar-time-spacer" />
-            {DAYS.map((day, dayIndex) => (
-              <div key={day} className="calendar-day-header">
-                <div>{language === "en" ? ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][dayIndex] : day}</div>
-                <div className="calendar-day-date">{formatDayShort(addDays(weekStart, dayIndex))}</div>
-              </div>
-            ))}
-          </div>
-          <div className="calendar-week-nav">
+          <div className="calendar-month-toolbar">
             <button
               type="button"
               className="icon-btn"
-              onClick={() => setWeekStart(addDays(weekStart, -7))}
-              title="Попередній тиждень"
+              onClick={() => setMonthAnchor((m) => shiftMonthStart(m, -1))}
+              title="Previous month"
             >
               ‹
             </button>
-            <span className="calendar-week-range">
-              {formatDayShort(weekStart)} – {formatDayShort(weekEnd)}
-            </span>
+            <span className="calendar-month-label">{getMonthYear(monthAnchor)}</span>
             <button
               type="button"
               className="icon-btn"
-              onClick={() => setWeekStart(addDays(weekStart, 7))}
-              title="Наступний тиждень"
+              onClick={() => setMonthAnchor((m) => shiftMonthStart(m, 1))}
+              title="Next month"
             >
               ›
             </button>
           </div>
 
-          <div className="calendar-body">
-            {timeSlots.map((minutes) => (
-              <div
-                key={minutes}
-                className="calendar-row"
-                style={{
-                  minHeight: getRowBaseHeight(),
-                }}
-              >
-                <div className="calendar-time">{formatTime(minutes)}</div>
-                {DAYS.map((day, dayIndex) => {
-                  const dayDate = addDays(weekStart, dayIndex);
-                  const covered = isCellCovered(dayDate, minutes);
-                  const cellEntries = entries.filter(
-                    (e) => e.date === dayDate && e.startMin === minutes
-                  );
-                  return (
-                    <div
-                      key={day}
-                      className={`calendar-cell${covered ? " calendar-cell-covered" : ""}${dragOverCell?.dayIndex === dayIndex && dragOverCell?.startMin === minutes ? " calendar-cell-drag-over" : ""}`}
-                      style={{ position: "relative", overflow: "visible" }}
-                      data-cell-day={dayIndex}
-                      data-cell-start={minutes}
-                      onClick={() => {
-                        if (covered) return;
-                        openCreateEntry(dayIndex, minutes);
-                      }}
-                      onDragOver={(e) => handleCellDragOver(e, dayIndex, minutes)}
-                      onDragLeave={handleCellDragLeave}
-                      onDrop={(e) => handleCellDrop(e, dayIndex, minutes)}
-                      role="button"
-                      tabIndex={0}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && !covered) openCreateEntry(dayIndex, minutes);
-                      }}
-                    >
-                      {cellEntries.map((en, idx) => {
-                        const g = en.groupId ? groupById.get(en.groupId) : null;
-                        const accent = en.color || g?.color || "#6366f1";
-                        const chipHeight = getChipHeight(en.minutes);
-                        const gap = 8;
-                        const topOffset =
-                          4 +
-                          cellEntries
-                            .slice(0, idx)
-                            .reduce((sum, e) => sum + getChipHeight(e.minutes) + gap, 0);
-                        return (
-                          <div
-                            key={en.id}
-                            className={`entry-chip${en.done ? " done" : ""}`}
-                            style={{
-                              borderLeftColor: accent,
-                              height: chipHeight,
-                              top: topOffset,
-                            }}
-                            draggable
-                            onDragStart={(e) => handleEntryDragStart(e, en)}
-                            onDragEnd={handleEntryDragEnd}
-                            onClick={(ev) => {
-                              ev.stopPropagation();
-                              if (!isDraggingEntryRef.current) setEditEntry(en);
-                            }}
-                            role="presentation"
-                          >
-                            <div className="entry-head">
-                              <button
-                                type="button"
-                                className="entry-done-toggle"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  updateCalendarEntry(en.id, { done: !en.done });
-                                }}
-                                aria-label={en.done ? "Позначити невиконаним" : "Позначити виконаним"}
-                              >
-                                {en.done ? "✓" : ""}
-                              </button>
-                              <span className="entry-title-text" title={en.title}>{en.title}</span>
-                              <span className="entry-time">{en.minutes} хв</span>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  );
-                })}
+          <div className="calendar-month-scroll" ref={monthScrollRef}>
+            <div
+              className="calendar-month-strip"
+              style={{
+                minWidth: `calc(144px + ${monthDays.length} * ${CAL_DAY_COL_PX}px)`,
+              }}
+            >
+              <div className="calendar-header" style={{ gridTemplateColumns: calendarGridColumns }}>
+                <div className="calendar-time-spacer" />
+                {monthDays.map((dayDate) => (
+                  <div key={dayDate} className="calendar-day-header">
+                    <div>{DAYS[dayIndexFromDate(dayDate)]}</div>
+                    <div className="calendar-day-date">{formatDayShort(dayDate)}</div>
+                  </div>
+                ))}
               </div>
-            ))}
+              <div className="calendar-body">
+                {timeSlots.map((minutes) => (
+                  <div
+                    key={minutes}
+                    className="calendar-row"
+                    style={{
+                      minHeight: getRowBaseHeight(),
+                      gridTemplateColumns: calendarGridColumns,
+                    }}
+                  >
+                    <div className="calendar-time">{formatTime(minutes)}</div>
+                    {monthDays.map((dayDate) => {
+                      const covered = isCellCovered(dayDate, minutes);
+                      const cellEntries = entries.filter(
+                        (e) => e.date === dayDate && e.startMin === minutes
+                      );
+                      const dragMatch =
+                        dragOverCell?.date === dayDate && dragOverCell?.startMin === minutes;
+                      return (
+                        <div
+                          key={`${dayDate}-${minutes}`}
+                          className={`calendar-cell${covered ? " calendar-cell-covered" : ""}${dragMatch ? " calendar-cell-drag-over" : ""}`}
+                          style={{ position: "relative", overflow: "visible" }}
+                          data-cell-date={dayDate}
+                          data-cell-start={minutes}
+                          onClick={() => {
+                            if (covered) return;
+                            openCreateEntry(minutes, dayDate);
+                          }}
+                          onDragOver={(e) => handleCellDragOver(e, minutes, dayDate)}
+                          onDragLeave={handleCellDragLeave}
+                          onDrop={(e) => handleCellDrop(e, minutes, dayDate)}
+                          role="button"
+                          tabIndex={0}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" && !covered) openCreateEntry(minutes, dayDate);
+                          }}
+                        >
+                          {cellEntries.map((en, idx) => {
+                            const g = en.groupId ? groupById.get(en.groupId) : null;
+                            const accent = en.color || g?.color || "#6366f1";
+                            const chipHeight = getChipHeight(en.minutes);
+                            const gap = 10;
+                            const topOffset =
+                              4 +
+                              cellEntries
+                                .slice(0, idx)
+                                .reduce((sum, e) => sum + getChipHeight(e.minutes) + gap, 0);
+                            return (
+                              <div
+                                key={en.id}
+                                className={`entry-chip${en.done ? " done" : ""}`}
+                                style={{
+                                  borderLeftColor: accent,
+                                  height: chipHeight,
+                                  top: topOffset,
+                                }}
+                                draggable
+                                onDragStart={(e) => handleEntryDragStart(e, en)}
+                                onDragEnd={handleEntryDragEnd}
+                                onClick={(ev) => {
+                                  ev.stopPropagation();
+                                  if (!isDraggingEntryRef.current) setEditEntry(en);
+                                }}
+                                role="presentation"
+                              >
+                                <div className="entry-head">
+                                  <button
+                                    type="button"
+                                    className="entry-done-toggle"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      updateCalendarEntry(en.id, { done: !en.done });
+                                    }}
+                                    aria-label={en.done ? "Mark as not done" : "Mark as done"}
+                                  >
+                                    {en.done ? "✓" : ""}
+                                  </button>
+                                  <span className="entry-title-text" title={en.title}>
+                                    {en.title}
+                                  </span>
+                                  <span className="entry-time">{en.minutes} min</span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </main>
       </div>
 
       <TaskModal
         open={createOpen}
-        title="Нова задача"
+        title="New task"
         groups={groups}
         initial={{ title: "", minutes: 30, color: "#6366f1", groupId: "" }}
         onClose={() => setCreateOpen(false)}
         onSubmit={createTask}
-        submitLabel="Створити"
+        submitLabel="Create"
       />
 
       <TaskModal
         open={!!editTask}
-        title="Налаштування задачі"
+        title="Task settings"
         groups={groups}
         initial={editTask}
         onClose={() => setEditTask(null)}
@@ -603,30 +662,30 @@ export default function CalendarPage() {
 
       <GroupModal
         open={createGroupOpen}
-        title="Нова група"
+        title="New group"
         initial={{ name: "", color: "#22c55e" }}
         onClose={() => setCreateGroupOpen(false)}
         onSubmit={createGroup}
-        submitLabel="Створити"
+        submitLabel="Create"
       />
 
       <EntryModal
         open={!!createEntry}
         title={
           createEntry
-            ? `Запланувати • ${DAYS[createEntry.dayIndex]} • ${formatTime(createEntry.startMin)}`
-            : "Запланувати"
+            ? `Schedule • ${formatDayShort(createEntry.date)} • ${DAYS[dayIndexFromDate(createEntry.date)]} • ${formatTime(createEntry.startMin)}`
+            : "Schedule"
         }
         groups={groups}
         initial={{ title: "", minutes: calendarSettings.stepMinutes, color: "#6366f1", groupId: "" }}
         onClose={() => setCreateEntry(null)}
         onSubmit={createCalendarEntry}
-        submitLabel="Додати"
+        submitLabel="Add"
       />
 
       <EntryModal
         open={!!editEntry}
-        title="Запланована задача"
+        title="Scheduled entry"
         groups={groups}
         initial={editEntry}
         onClose={() => setEditEntry(null)}

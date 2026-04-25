@@ -29,6 +29,11 @@
   gap: 12px;
 }
 
+.app-user-email {
+  font-size: 12px;
+  color: rgba(229, 231, 235, 0.7);
+}
+
 .app-select {
   appearance: none;
   -webkit-appearance: none;
@@ -340,26 +345,63 @@
 }
 
 .calendar {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.calendar-month-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 10px 12px;
+  flex-shrink: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(11, 18, 32, 0.92);
+}
+
+.calendar-month-label {
+  font-size: 15px;
+  font-weight: 600;
+  color: rgba(229, 231, 235, 0.92);
+  min-width: 160px;
+  text-align: center;
+}
+
+.calendar-month-scroll {
+  flex: 1;
+  min-height: 0;
   overflow: auto;
+}
+
+.calendar-month-strip {
+  display: block;
 }
 
 .calendar-header {
   display: grid;
-  grid-template-columns: 72px repeat(7, minmax(160px, 1fr));
   align-items: stretch;
   position: sticky;
   top: 0;
   z-index: 5;
-  background: rgba(11, 18, 32, 0.92);
+  background: rgba(11, 18, 32, 0.96);
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(8px);
 }
 
 .calendar-time-spacer {
+  position: sticky;
+  left: 0;
+  z-index: 7;
   border-right: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(11, 18, 32, 0.98);
+  box-shadow: 1px 0 0 rgba(255, 255, 255, 0.06);
 }
 
 .calendar-day-header {
-  padding: 8px 10px;
+  padding: 10px 12px;
   font-weight: 600;
   color: rgba(229, 231, 235, 0.9);
   border-right: 1px solid rgba(255, 255, 255, 0.08);
@@ -372,39 +414,26 @@
   margin-top: 2px;
 }
 
-.calendar-week-nav {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  padding: 8px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  background: rgba(11, 18, 32, 0.6);
-}
-
-.calendar-week-range {
-  font-size: 13px;
-  color: rgba(229, 231, 235, 0.85);
-  min-width: 140px;
-  text-align: center;
-}
-
 .calendar-body {
-  min-width: 72px;
+  min-width: 144px;
 }
 
 .calendar-row {
   display: grid;
-  grid-template-columns: 72px repeat(7, minmax(160px, 1fr));
-  min-height: 56px;
+  min-height: 112px;
 }
 
 .calendar-time {
-  padding: 8px 10px;
-  font-size: 12px;
+  position: sticky;
+  left: 0;
+  z-index: 6;
+  padding: 10px 12px;
+  font-size: 13px;
   color: rgba(229, 231, 235, 0.65);
   border-right: 1px solid rgba(255, 255, 255, 0.08);
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(11, 18, 32, 0.98);
+  box-shadow: 1px 0 0 rgba(255, 255, 255, 0.06);
 }
 
 .calendar-cell {
@@ -433,7 +462,7 @@
   left: 4px;
   right: 4px;
   top: 4px;
-  padding: 6px 8px;
+  padding: 5px 8px;
   border-radius: 10px;
   border: 1px solid rgba(255, 255, 255, 0.12);
   background: rgba(255, 255, 255, 0.04);
@@ -444,6 +473,7 @@
   box-sizing: border-box;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
   cursor: grab;
+  overflow: hidden;
 }
 
 .entry-chip.dragging {
@@ -454,19 +484,23 @@
 .entry-head {
   display: flex;
   align-items: flex-start;
-  gap: 6px;
+  gap: 8px;
   width: 100%;
+  min-width: 0;
+  min-height: 0;
 }
 
 .entry-title-text {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   color: rgba(229, 231, 235, 0.95);
   line-height: 1.2;
   min-width: 0;
-  overflow-wrap: anywhere;
-  word-break: break-word;
   flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-top: 1px;
 }
 
 .entry-time {
@@ -475,6 +509,7 @@
   line-height: 1.2;
   white-space: nowrap;
   margin-left: auto;
+  flex-shrink: 0;
   padding-top: 1px;
 }
 
@@ -489,18 +524,20 @@
 }
 
 .entry-done-toggle {
-  width: 15px;
-  height: 15px;
-  min-width: 15px;
-  min-height: 15px;
+  width: 14px;
+  height: 14px;
+  min-width: 14px;
+  min-height: 14px;
   border-radius: 999px;
   border: 1px solid rgba(148, 163, 184, 0.9);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 9px;
+  line-height: 1;
   flex-shrink: 0;
   padding: 0;
+  margin-top: 1px;
   background: transparent;
   color: transparent;
   cursor: pointer;
@@ -1007,4 +1044,179 @@ select.modal-input:hover {
   .settings-inline-grid {
     grid-template-columns: 1fr;
   }
+}
+
+/* Theme-specific visual styles */
+html[data-theme="neon"] .app {
+  background:
+    radial-gradient(1200px 700px at 20% -10%, rgba(99, 102, 241, 0.2), transparent 55%),
+    radial-gradient(900px 600px at 100% 0%, rgba(236, 72, 153, 0.14), transparent 50%),
+    #0b1220;
+}
+
+html[data-theme="neon"] .app-header,
+html[data-theme="neon"] .calendar-month-toolbar,
+html[data-theme="neon"] .calendar-header {
+  box-shadow: 0 0 28px rgba(99, 102, 241, 0.12);
+}
+
+html[data-theme="neon"] .primary-btn,
+html[data-theme="neon"] .sidebar-add {
+  box-shadow: 0 0 18px rgba(99, 102, 241, 0.26);
+}
+
+html[data-theme="neon"] .entry-chip {
+  box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.2), 0 8px 18px rgba(15, 23, 42, 0.52);
+}
+
+html[data-theme="minimal"] .app {
+  background: #f3f4f6;
+  color: #111827;
+}
+
+html[data-theme="minimal"] .app-header {
+  background: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+html[data-theme="minimal"] .sidebar {
+  border-right: 1px solid #e5e7eb;
+}
+
+html[data-theme="minimal"] .sidebar-divider {
+  background: #e5e7eb;
+}
+
+html[data-theme="minimal"] .group-pill,
+html[data-theme="minimal"] .task-item,
+html[data-theme="minimal"] .entry-chip,
+html[data-theme="minimal"] .settings-card,
+html[data-theme="minimal"] .achievement-card,
+html[data-theme="minimal"] .stats-line-section,
+html[data-theme="minimal"] .modal {
+  background: #ffffff;
+  border-color: #d1d5db;
+  box-shadow: none;
+}
+
+html[data-theme="minimal"] .calendar-month-toolbar,
+html[data-theme="minimal"] .calendar-header,
+html[data-theme="minimal"] .calendar-time,
+html[data-theme="minimal"] .calendar-time-spacer {
+  background: #ffffff;
+  border-color: #e5e7eb;
+  box-shadow: none;
+}
+
+html[data-theme="minimal"] .calendar-cell {
+  background: #f9fafb;
+  border-right: 1px solid #e5e7eb;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+html[data-theme="minimal"] .calendar-cell:hover {
+  background: #eef2ff;
+}
+
+html[data-theme="minimal"] .calendar-cell-covered {
+  background: #f3f4f6;
+}
+
+html[data-theme="minimal"] .app-select,
+html[data-theme="minimal"] .modal-input,
+html[data-theme="minimal"] select.modal-input,
+html[data-theme="minimal"] .icon-btn {
+  background: #ffffff;
+  color: #111827;
+  border-color: #d1d5db;
+}
+
+html[data-theme="minimal"] .custom-select-menu {
+  background: #ffffff;
+  border-color: #d1d5db;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.08);
+}
+
+html[data-theme="minimal"] .custom-select-option {
+  color: #111827;
+}
+
+html[data-theme="minimal"] .custom-select-option:hover {
+  background: #eef2ff;
+}
+
+html[data-theme="minimal"] .custom-select-option.is-selected {
+  background: #e0e7ff;
+  color: #1e1b4b;
+}
+
+html[data-theme="minimal"] .stats-legend-item {
+  background: #ffffff;
+  border-color: #d1d5db;
+  color: #111827;
+}
+
+html[data-theme="minimal"] .task-title,
+html[data-theme="minimal"] .group-name,
+html[data-theme="minimal"] .calendar-day-header,
+html[data-theme="minimal"] .calendar-month-label,
+html[data-theme="minimal"] .entry-title-text,
+html[data-theme="minimal"] .settings-title,
+html[data-theme="minimal"] .achievements-title {
+  color: #111827;
+}
+
+html[data-theme="minimal"] .task-meta,
+html[data-theme="minimal"] .calendar-day-date,
+html[data-theme="minimal"] .calendar-time,
+html[data-theme="minimal"] .entry-time,
+html[data-theme="minimal"] .sidebar-hint,
+html[data-theme="minimal"] .settings-subtitle,
+html[data-theme="minimal"] .achievements-subtitle,
+html[data-theme="minimal"] .stats-legend-pct {
+  color: #6b7280;
+}
+
+html[data-theme="minimal"] .primary-btn {
+  background: #111827;
+  border-color: #111827;
+  color: #ffffff;
+}
+
+html[data-theme="minimal"] .modal-label,
+html[data-theme="minimal"] .achievement-desc,
+html[data-theme="minimal"] .achievement-level .level-label,
+html[data-theme="minimal"] .achievement-level .level-progress,
+html[data-theme="minimal"] .stats-line-title,
+html[data-theme="minimal"] .stats-line-y,
+html[data-theme="minimal"] .stats-line-x,
+html[data-theme="minimal"] .stats-range-label,
+html[data-theme="minimal"] .task-empty,
+html[data-theme="minimal"] .settings-card-title,
+html[data-theme="minimal"] .achievement-current,
+html[data-theme="minimal"] .calendar-time {
+  color: #4b5563;
+}
+
+html[data-theme="minimal"] .achievement-level .level-name,
+html[data-theme="minimal"] .stats-donut-title,
+html[data-theme="minimal"] .modal-title {
+  color: #1f2937;
+}
+
+html[data-theme="minimal"] .entry-chip.done {
+  background: #f3f4f6;
+  border-color: #d1d5db;
+}
+
+html[data-theme="minimal"] .modal-input::placeholder {
+  color: #9ca3af;
+}
+
+html[data-theme="minimal"] .app-right > div[style*="rgba(229,231,235,0.7)"] {
+  color: #6b7280 !important;
+}
+
+html[data-theme="minimal"] .app-user-email {
+  color: #6b7280;
 }

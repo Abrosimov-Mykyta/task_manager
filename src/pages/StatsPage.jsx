@@ -30,9 +30,9 @@ const GROUP_COLORS = [
 function minutesToHhMm(m) {
   const h = Math.floor(m / 60);
   const mm = m % 60;
-  if (h === 0) return `${mm} хв`;
-  if (mm === 0) return `${h} год`;
-  return `${h} год ${mm} хв`;
+  if (h === 0) return `${mm} min`;
+  if (mm === 0) return `${h} h`;
+  return `${h} h ${mm} min`;
 }
 
 function DonutChart({ data, title, totalLabel, emptyLabel }) {
@@ -168,7 +168,7 @@ export default function StatsPage() {
       if (!groupMap.has(key)) {
         groupMap.set(key, {
           id,
-          name: id ? name : "Без групи",
+          name: id ? name : "No group",
           color: color || null,
           plannedCount: 0,
           doneCount: 0,
@@ -270,29 +270,29 @@ export default function StatsPage() {
       <header className="app-header">
         <div className="app-logo">FocusOS</div>
         <div className="app-right">
-          <div style={{ fontSize: 12, color: "rgba(229,231,235,0.7)" }}>{user?.email}</div>
+          <div className="app-user-email">{user?.email}</div>
           <CustomSelect
             className="app-select"
-            value="Статистика"
+            value="Statistics"
             onChange={(v) => {
-              if (v === "Календар") navigate("/app");
-              if (v === "Досягнення") navigate("/achievements");
-              if (v === "Налаштування") navigate("/settings");
+              if (v === "Calendar") navigate("/app");
+              if (v === "Achievements") navigate("/achievements");
+              if (v === "Settings") navigate("/settings");
             }}
             options={[
-              { value: "Календар", label: "Календар" },
-              { value: "Статистика", label: "Статистика" },
-              { value: "Досягнення", label: "Досягнення" },
-              { value: "Налаштування", label: "Налаштування" },
+              { value: "Calendar", label: "Calendar" },
+              { value: "Statistics", label: "Statistics" },
+              { value: "Achievements", label: "Achievements" },
+              { value: "Settings", label: "Settings" },
             ]}
           />
-          <button className="icon-btn" type="button" onClick={() => signOut()} title="Вийти">↩</button>
+          <button className="icon-btn" type="button" onClick={() => signOut()} title="Sign out">↩</button>
         </div>
       </header>
 
       <div className="app-layout stats-layout">
         <aside className="sidebar">
-          <h2 className="sidebar-title">Зведення</h2>
+          <h2 className="sidebar-title">Summary</h2>
           <div className="stats-range-controls">
             <CustomSelect
               className="modal-input"
@@ -304,28 +304,28 @@ export default function StatsPage() {
                 else setRangeStart(getMonthStart(getTodayYMD()));
               }}
               options={[
-                { value: "day", label: "День" },
-                { value: "week", label: "Тиждень" },
-                { value: "month", label: "Місяць" },
+                { value: "day", label: "Day" },
+                { value: "week", label: "Week" },
+                { value: "month", label: "Month" },
               ]}
             />
             <div className="stats-range-nav">
-              <button type="button" className="icon-btn" onClick={goPrev} title="Назад">‹</button>
+              <button type="button" className="icon-btn" onClick={goPrev} title="Previous">‹</button>
               <span className="stats-range-label">{label}</span>
-              <button type="button" className="icon-btn" onClick={goNext} title="Вперед">›</button>
+              <button type="button" className="icon-btn" onClick={goNext} title="Next">›</button>
             </div>
           </div>
           {loading ? (
-            <div className="task-empty">Завантаження...</div>
+            <div className="task-empty">Loading…</div>
           ) : (
             <>
               <div className="task-empty stats-summary-box">
-                <div>Заплановано: {minutesToHhMm(stats.totalPlannedMinutes)}</div>
-                <div>Виконано: {minutesToHhMm(stats.totalDoneMinutes)}</div>
-                <div>Не виконано: {minutesToHhMm(stats.totalNotDoneMinutes)}</div>
-                <div>Середній час/день: {minutesToHhMm(Math.round(stats.avgPerDay))}</div>
+                <div>Planned: {minutesToHhMm(stats.totalPlannedMinutes)}</div>
+                <div>Done: {minutesToHhMm(stats.totalDoneMinutes)}</div>
+                <div>Not done: {minutesToHhMm(stats.totalNotDoneMinutes)}</div>
+                <div>Avg per day: {minutesToHhMm(Math.round(stats.avgPerDay))}</div>
               </div>
-              <h3 className="sidebar-title" style={{ marginTop: 16, fontSize: 14 }}>По групах</h3>
+              <h3 className="sidebar-title" style={{ marginTop: 16, fontSize: 14 }}>By group</h3>
               <div className="group-list" style={{ flexDirection: "column" }}>
                 {stats.groups.map((g, idx) => {
                   const color = g.color || GROUP_COLORS[idx % GROUP_COLORS.length];
@@ -343,26 +343,26 @@ export default function StatsPage() {
 
         <main className="stats-main">
           {loading ? (
-            <div className="task-empty">Завантаження...</div>
+            <div className="task-empty">Loading…</div>
           ) : (
             <>
               <div className="stats-donuts">
                 <DonutChart
                   data={pieDone}
-                  title="Виконано"
-                  totalLabel="Виконано"
-                  emptyLabel="Немає виконаних"
+                  title="Done"
+                  totalLabel="Done"
+                  emptyLabel="Nothing completed yet"
                 />
                 <DonutChart
                   data={pieNotDone}
-                  title="Не виконано"
-                  totalLabel="Не виконано"
-                  emptyLabel="Немає невиконаних"
+                  title="Not done"
+                  totalLabel="Not done"
+                  emptyLabel="Nothing pending"
                 />
               </div>
               <div className="stats-line-section">
                 <h3 className="stats-line-title">
-                  {rangeType === "day" ? "Ефективність по годинах" : "Ефективність по днях"}
+                  {rangeType === "day" ? "Focus by hour" : "Focus by day"}
                 </h3>
                 <div className="stats-line-chart">
                   <div className="stats-line-y">
@@ -372,7 +372,7 @@ export default function StatsPage() {
                   </div>
                   <div className="stats-line-area">
                     {lineData.length === 0 ? (
-                      <div className="stats-line-empty">Немає даних</div>
+                      <div className="stats-line-empty">No data</div>
                     ) : (
                       <svg viewBox={`0 0 ${Math.max(lineData.length, 1)} 100`} preserveAspectRatio="none">
                         <defs>

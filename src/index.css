@@ -2,8 +2,6 @@
   --tm-font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --tm-bg: #0b1220;
   --tm-text: rgba(229, 231, 235, 0.92);
-  --tm-filter: none;
-  --tm-saturation: 1;
 
   font-family: var(--tm-font-family);
   line-height: 1.5;
@@ -35,7 +33,6 @@ body {
   font-family: var(--tm-font-family);
   background: var(--tm-bg);
   color: var(--tm-text);
-  filter: var(--tm-filter);
 }
 
 #root {
@@ -61,16 +58,9 @@ button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
 }
 
-html[data-theme="classic"] {
-  --tm-font-family: "Times New Roman", Times, serif;
-  --tm-bg: #0f1115;
-  --tm-text: #e6e6e6;
-  --tm-filter: grayscale(1) contrast(1.05);
-}
-
 html[data-theme="minimal"] {
   --tm-font-family: "Inter", "Segoe UI", Roboto, Arial, sans-serif;
-  --tm-bg: #111827;
-  --tm-text: #f3f4f6;
-  --tm-filter: saturate(0.65) contrast(1.02);
+  --tm-bg: #f3f4f6;
+  --tm-text: #111827;
+  color-scheme: light;
 }

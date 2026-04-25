@@ -26,16 +26,8 @@ function snapToStep(minutes, stepMinutes) {
 export default function SettingsPage() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
-  const {
-    theme,
-    language,
-    timeFormat,
-    calendarSettings,
-    setTheme,
-    setLanguage,
-    setTimeFormat,
-    setCalendarSettings,
-  } = useSettings();
+  const { theme, timeFormat, calendarSettings, setTheme, setTimeFormat, setCalendarSettings } =
+    useSettings();
 
   const startOptions = useMemo(
     () => buildTimeOptions(calendarSettings.stepMinutes, "start", timeFormat),
@@ -51,45 +43,44 @@ export default function SettingsPage() {
       <header className="app-header">
         <div className="app-logo">FocusOS</div>
         <div className="app-right">
-          <div style={{ fontSize: 12, color: "rgba(229,231,235,0.7)" }}>{user?.email}</div>
+          <div className="app-user-email">{user?.email}</div>
           <CustomSelect
             className="app-select"
-            value="Налаштування"
+            value="Settings"
             onChange={(v) => {
-              if (v === "Календар") navigate("/app");
-              if (v === "Статистика") navigate("/stats");
-              if (v === "Досягнення") navigate("/achievements");
+              if (v === "Calendar") navigate("/app");
+              if (v === "Statistics") navigate("/stats");
+              if (v === "Achievements") navigate("/achievements");
             }}
             options={[
-              { value: "Календар", label: "Календар" },
-              { value: "Статистика", label: "Статистика" },
-              { value: "Досягнення", label: "Досягнення" },
-              { value: "Налаштування", label: "Налаштування" },
+              { value: "Calendar", label: "Calendar" },
+              { value: "Statistics", label: "Statistics" },
+              { value: "Achievements", label: "Achievements" },
+              { value: "Settings", label: "Settings" },
             ]}
           />
-          <button className="icon-btn" type="button" onClick={() => signOut()} title="Вийти">
+          <button className="icon-btn" type="button" onClick={() => signOut()} title="Sign out">
             ↩
           </button>
         </div>
       </header>
 
       <main className="settings-main">
-        <h1 className="settings-title">Налаштування</h1>
-        <p className="settings-subtitle">Персоналізуй вигляд та поведінку застосунку.</p>
+        <h1 className="settings-title">Settings</h1>
+        <p className="settings-subtitle">Customize how the app looks and behaves.</p>
 
         <div className="settings-grid">
           <section className="settings-card">
-            <h2 className="settings-card-title">Стиль застосунку</h2>
+            <h2 className="settings-card-title">Appearance</h2>
             <div className="settings-form-row">
               <label className="modal-label">
-                Тема
+                Theme
                 <CustomSelect
                   className="modal-input"
                   value={theme}
                   onChange={setTheme}
                   options={[
-                    { value: "neon", label: "Neon (поточна)" },
-                    { value: "classic", label: "Classic (аристократичний)" },
+                    { value: "neon", label: "Neon (default)" },
                     { value: "minimal", label: "Minimal" },
                   ]}
                 />
@@ -98,31 +89,17 @@ export default function SettingsPage() {
           </section>
 
           <section className="settings-card">
-            <h2 className="settings-card-title">Локалізація</h2>
+            <h2 className="settings-card-title">Regional</h2>
             <div className="settings-form-row">
               <label className="modal-label">
-                Мова інтерфейсу
-                <CustomSelect
-                  className="modal-input"
-                  value={language}
-                  onChange={setLanguage}
-                  options={[
-                    { value: "uk", label: "Українська" },
-                    { value: "en", label: "English" },
-                  ]}
-                />
-              </label>
-            </div>
-            <div className="settings-form-row">
-              <label className="modal-label">
-                Формат часу
+                Time format
                 <CustomSelect
                   className="modal-input"
                   value={timeFormat}
                   onChange={setTimeFormat}
                   options={[
-                    { value: "24h", label: "24-годинний" },
-                    { value: "12h", label: "12-годинний (AM/PM)" },
+                    { value: "24h", label: "24-hour" },
+                    { value: "12h", label: "12-hour (AM/PM)" },
                   ]}
                 />
               </label>
@@ -130,10 +107,10 @@ export default function SettingsPage() {
           </section>
 
           <section className="settings-card">
-            <h2 className="settings-card-title">Календар</h2>
+            <h2 className="settings-card-title">Calendar</h2>
             <div className="settings-form-row">
               <label className="modal-label">
-                Крок
+                Grid step
                 <CustomSelect
                   className="modal-input"
                   value={calendarSettings.stepMinutes}
@@ -147,16 +124,16 @@ export default function SettingsPage() {
                     setCalendarSettings({ startMinutes, endMinutes, stepMinutes });
                   }}
                   options={[
-                    { value: 60, label: "60 хв" },
-                    { value: 30, label: "30 хв" },
-                    { value: 15, label: "15 хв" },
+                    { value: 60, label: "60 min" },
+                    { value: 30, label: "30 min" },
+                    { value: 15, label: "15 min" },
                   ]}
                 />
               </label>
             </div>
             <div className="settings-inline-grid">
               <label className="modal-label">
-                Початок дня
+                Day starts at
                 <CustomSelect
                   className="modal-input"
                   value={calendarSettings.startMinutes}
@@ -170,7 +147,7 @@ export default function SettingsPage() {
                 />
               </label>
               <label className="modal-label">
-                Кінець дня
+                Day ends at
                 <CustomSelect
                   className="modal-input"
                   value={calendarSettings.endMinutes}
@@ -190,4 +167,3 @@ export default function SettingsPage() {
     </div>
   );
 }
-

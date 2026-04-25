@@ -5,7 +5,6 @@ const KEY = "tm_user_settings_v1";
 
 const DEFAULTS = {
   theme: "neon",
-  language: "uk",
   timeFormat: "24h",
 };
 
@@ -16,9 +15,9 @@ function loadUserSettings() {
     const raw = localStorage.getItem(KEY);
     if (!raw) return DEFAULTS;
     const parsed = JSON.parse(raw);
+    const normalizedTheme = parsed.theme === "classic" ? "neon" : parsed.theme;
     return {
-      theme: ["neon", "classic", "minimal"].includes(parsed.theme) ? parsed.theme : "neon",
-      language: ["uk", "en"].includes(parsed.language) ? parsed.language : "uk",
+      theme: ["neon", "minimal"].includes(normalizedTheme) ? normalizedTheme : "neon",
       timeFormat: ["24h", "12h"].includes(parsed.timeFormat) ? parsed.timeFormat : "24h",
     };
   } catch {
@@ -40,18 +39,15 @@ export function SettingsProvider({ children }) {
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", userSettings.theme);
-    document.documentElement.setAttribute("data-language", userSettings.language);
     document.documentElement.setAttribute("data-time-format", userSettings.timeFormat);
-  }, [userSettings.theme, userSettings.language, userSettings.timeFormat]);
+  }, [userSettings.theme, userSettings.timeFormat]);
 
   const value = useMemo(
     () => ({
       theme: userSettings.theme,
-      language: userSettings.language,
       timeFormat: userSettings.timeFormat,
       calendarSettings,
       setTheme: (theme) => setUserSettings((prev) => ({ ...prev, theme })),
-      setLanguage: (language) => setUserSettings((prev) => ({ ...prev, language })),
       setTimeFormat: (timeFormat) => setUserSettings((prev) => ({ ...prev, timeFormat })),
       setCalendarSettings,
     }),
@@ -66,4 +62,3 @@ export function useSettings() {
   if (!ctx) throw new Error("useSettings must be used within <SettingsProvider />");
   return ctx;
 }
-

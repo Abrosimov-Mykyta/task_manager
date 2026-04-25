@@ -9,66 +9,66 @@ import CustomSelect from "../components/CustomSelect";
 const ACHIEVEMENTS = [
   {
     id: "workhorse",
-    title: "Роботяга",
-    description: "Виконати задач на вказану кількість годин за один день",
+    title: "Workhorse",
+    description: "Complete tasks for a given number of hours in a single day",
     icon: "💪",
     levels: [
-      { name: "Бронза", value: 360, label: "6 год/день", emoji: "🥉" },
-      { name: "Срібло", value: 480, label: "8 год/день", emoji: "🥈" },
-      { name: "Золото", value: 600, label: "10 год/день", emoji: "🥇" },
+      { name: "Bronze", value: 360, label: "6 h / day", emoji: "🥉" },
+      { name: "Silver", value: 480, label: "8 h / day", emoji: "🥈" },
+      { name: "Gold", value: 600, label: "10 h / day", emoji: "🥇" },
     ],
     check: (stats) => stats.maxMinutesInDay,
-    unit: "хв",
+    unit: "min",
   },
   {
     id: "consistency",
-    title: "Постійність",
-    description: "Середня тривалість виконаних задач за день у найкращому тижні",
+    title: "Consistency",
+    description: "Average completed task time per day in your best week",
     icon: "📅",
     levels: [
-      { name: "Бронза", value: 240, label: "4 год/день (сер.)", emoji: "🥉" },
-      { name: "Срібло", value: 360, label: "6 год/день (сер.)", emoji: "🥈" },
-      { name: "Золото", value: 480, label: "8 год/день (сер.)", emoji: "🥇" },
+      { name: "Bronze", value: 240, label: "4 h / day (avg.)", emoji: "🥉" },
+      { name: "Silver", value: 360, label: "6 h / day (avg.)", emoji: "🥈" },
+      { name: "Gold", value: 480, label: "8 h / day (avg.)", emoji: "🥇" },
     ],
     check: (stats) => stats.bestWeekAvgMinutesPerDay,
-    unit: "хв",
+    unit: "min",
   },
   {
     id: "diverse",
-    title: "Різноплановий",
-    description: "Використати різні категорії (групи) за один тиждень",
+    title: "Well rounded",
+    description: "Use different categories (groups) in one week",
     icon: "🎯",
     levels: [
-      { name: "Бронза", value: 3, label: "3 групи", emoji: "🥉" },
-      { name: "Срібло", value: 5, label: "5 груп", emoji: "🥈" },
-      { name: "Золото", value: 7, label: "7 груп", emoji: "🥇" },
+      { name: "Bronze", value: 3, label: "3 groups", emoji: "🥉" },
+      { name: "Silver", value: 5, label: "5 groups", emoji: "🥈" },
+      { name: "Gold", value: 7, label: "7 groups", emoji: "🥇" },
     ],
     check: (stats) => stats.maxGroupsInWeek,
     unit: "",
   },
   {
     id: "streak",
-    title: "Серія",
-    description: "Підряд днів з мінімальним часом виконаних задач",
+    title: "Streak",
+    description: "Consecutive days with at least a minimum of completed task time",
     icon: "🔥",
     levels: [
-      { name: "Бронза", value: 3, label: "3 дні по 2 год", emoji: "🥉", minMinutesPerDay: 120 },
-      { name: "Срібло", value: 5, label: "5 днів по 3 год", emoji: "🥈", minMinutesPerDay: 180 },
-      { name: "Золото", value: 7, label: "7 днів по 4 год", emoji: "🥇", minMinutesPerDay: 240 },
+      { name: "Bronze", value: 3, label: "3 days at 2 h", emoji: "🥉", minMinutesPerDay: 120 },
+      { name: "Silver", value: 5, label: "5 days at 3 h", emoji: "🥈", minMinutesPerDay: 180 },
+      { name: "Gold", value: 7, label: "7 days at 4 h", emoji: "🥇", minMinutesPerDay: 240 },
     ],
     check: (stats, level) => stats.bestStreakByThreshold?.[level?.minMinutesPerDay ?? 0] ?? 0,
     compareValue: (level) => level.value,
-    unit: "днів",
+    unit: "days",
   },
   {
     id: "veteran",
-    title: "Ветеран",
-    description: "Загальна кількість виконаних задач",
+    title: "Veteran",
+    description: "Total number of completed tasks",
     icon: "⭐",
     levels: [
-      { name: "Бронза", value: 50, label: "50 задач", emoji: "🥉" },
-      { name: "Срібло", value: 200, label: "200 задач", emoji: "🥈" },
-      { name: "Золото", value: 500, label: "500 задач", emoji: "🥇" },
+      { name: "Bronze", value: 50, label: "50 tasks", emoji: "🥉" },
+      { name: "Silver", value: 200, label: "200 tasks", emoji: "🥈" },
+      { name: "Gold", value: 500, label: "500 tasks", emoji: "🥇" },
     ],
     check: (stats) => stats.totalDoneCount,
     unit: "",
@@ -143,10 +143,10 @@ function formatValue(value, ach, level) {
   if (ach.id === "workhorse" || ach.id === "consistency") {
     const h = Math.floor(value / 60);
     const m = value % 60;
-    if (h === 0) return `${m} хв`;
-    return m ? `${h} год ${m} хв` : `${h} год`;
+    if (h === 0) return `${m} min`;
+    return m ? `${h} h ${m} min` : `${h} h`;
   }
-  if (ach.id === "streak") return `${value} дн`;
+  if (ach.id === "streak") return `${value} d`;
   return String(value);
 }
 
@@ -199,36 +199,36 @@ export default function AchievementsPage() {
       <header className="app-header">
         <div className="app-logo">FocusOS</div>
         <div className="app-right">
-          <div style={{ fontSize: 12, color: "rgba(229,231,235,0.7)" }}>{user?.email}</div>
+          <div className="app-user-email">{user?.email}</div>
           <CustomSelect
             className="app-select"
-            value="Досягнення"
+            value="Achievements"
             onChange={(v) => {
-              if (v === "Календар") navigate("/app");
-              if (v === "Статистика") navigate("/stats");
-              if (v === "Налаштування") navigate("/settings");
+              if (v === "Calendar") navigate("/app");
+              if (v === "Statistics") navigate("/stats");
+              if (v === "Settings") navigate("/settings");
             }}
             options={[
-              { value: "Календар", label: "Календар" },
-              { value: "Статистика", label: "Статистика" },
-              { value: "Досягнення", label: "Досягнення" },
-              { value: "Налаштування", label: "Налаштування" },
+              { value: "Calendar", label: "Calendar" },
+              { value: "Statistics", label: "Statistics" },
+              { value: "Achievements", label: "Achievements" },
+              { value: "Settings", label: "Settings" },
             ]}
           />
-          <button className="icon-btn" type="button" onClick={() => signOut()} title="Вийти">
+          <button className="icon-btn" type="button" onClick={() => signOut()} title="Sign out">
             ↩
           </button>
         </div>
       </header>
 
       <main className="achievements-main">
-        <h1 className="achievements-title">Досягнення</h1>
+        <h1 className="achievements-title">Achievements</h1>
         <p className="achievements-subtitle">
-          Виконуй задачі в календарі — розблоковуй рівні досягнень за останні 6 місяців.
+          Complete tasks in the calendar — unlock achievement tiers over the last 6 months.
         </p>
 
         {loading ? (
-          <div className="task-empty">Завантаження...</div>
+          <div className="task-empty">Loading…</div>
         ) : (
           <div className="achievements-grid">
             {achievementProgress.map(({ ach, current, levelsUnlocked }) => (
@@ -242,7 +242,7 @@ export default function AchievementsPage() {
                 </div>
                 {ach.id !== "streak" && current != null && (
                   <div className="achievement-current">
-                    Зараз: {formatValue(current, ach)}
+                    Current: {formatValue(current, ach)}
                   </div>
                 )}
                 <div className="achievement-levels">
@@ -265,13 +265,13 @@ export default function AchievementsPage() {
                           <span className="level-done">✓</span>
                         ) : ach.id === "streak" ? (
                           <span className="level-progress">
-                            {valueForLevel}/{target} дн
+                            {valueForLevel}/{target} d
                           </span>
                         ) : (
                           <span className="level-progress">
                             {ach.id === "diverse" || ach.id === "veteran"
                               ? `${valueForLevel ?? 0}/${target}`
-                              : `${formatValue(current ?? 0, ach)} / ${ach.id === "workhorse" || ach.id === "consistency" ? (target / 60) + " год" : target}`}
+                              : `${formatValue(current ?? 0, ach)} / ${ach.id === "workhorse" || ach.id === "consistency" ? (target / 60) + " h" : target}`}
                           </span>
                         )}
                       </div>
